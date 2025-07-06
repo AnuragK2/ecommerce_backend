@@ -1,6 +1,7 @@
 const mongoose= require("mongoose")
+require("dotenv").config();
 
-const mongodbUrl = "mongodb+srv://anuragk0424:Anurag123@cluster0.yam4hnx.mongodb.net/?retryWrites=true&w=majority"
+const mongodbUrl = process.env.MONGODB_URL;
 
 const connectDb = () => {
     return mongoose.connect(mongodbUrl);

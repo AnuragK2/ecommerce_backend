@@ -1,7 +1,7 @@
 const reviewService = require("../services/review.service");
 
 const createReview = async (req, res) => {
-    const user = req.user; // Assuming user is set in the request by authentication middleware
+    const user = await req.user; // Assuming user is set in the request by authentication middleware
     try {
         const review = await reviewService.createReview(req.body,user);
         return res.status(201).send(review);

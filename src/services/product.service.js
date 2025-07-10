@@ -5,6 +5,7 @@ async function createProduct(reqData) {
   let topLevel = await Category.findOne({ name: reqData.topLevelCategory });
   if (!topLevel) {
     topLevel = new Category({ name: reqData.topLevelCategory, level: 1 });
+    await topLevel.save();
   }
   let secondLevel = await Category.findOne({
     name: reqData.secondLevelCategory,
@@ -16,6 +17,7 @@ async function createProduct(reqData) {
       level: 2,
       parentCategory: topLevel._id,
     });
+    await secondLevel.save();
   }
   let thirdLevel = await Category.findOne({
     name: reqData.thirdLevelCategory,
@@ -27,6 +29,7 @@ async function createProduct(reqData) {
       level: 3,
       parentCategory: secondLevel._id,
     });
+    await thirdLevel.save();
   }
   const product = new Product({
     title: reqData.title,
@@ -81,9 +84,9 @@ async function getAllProducts(reqQuery) {
     pageNumber,
     pageSize,
   } = reqQuery;
-  pageSize = pageSize || 10;
+  (pageSize = pageSize || 10), (pageNumber = pageNumber || 1);
 
-  let query = product.find().populate("category");
+  let query = Product.find().populate("category");
 
   if (category) {
     const existCategory = await Category.findOne({

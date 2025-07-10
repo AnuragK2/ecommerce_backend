@@ -1,3 +1,4 @@
+const CartItem = require("../models/cartItem.model");
 const userService = require("../services/user.service")
 
 async function updateCartItem(userId, cartItemId, cartItemData) {
@@ -6,7 +7,7 @@ async function updateCartItem(userId, cartItemId, cartItemData) {
         if (!item) {
             throw new Error("Item not found:", cartItemId);
         }
-        const user = await userService.findUserById(item.userId);
+        const user = await userService.findUserById(item.userId); 
         if (!user) {
             throw new Error("User not found:", userId);
         }
@@ -30,14 +31,14 @@ async function removeCartItem(userId, cartItemId) {
     const cartItem = await findCartItemById(cartItemId);
     const user = await userService.findUserById(userId);
     if (user._id.toString() === cartItem.userId.toString()){
-        await CartItem.findByIdAndDelete(cartItemId)
+        return await CartItem.findByIdAndDelete(cartItemId)
     } else {
         throw new Error("You are not authorized to remove this cart item");
     }
 }
 
 async function findCartItemById(cartItemId) {
-    const cartItem = await findCartItemById(cartItemId);
+    const cartItem = await CartItem.findById(cartItemId).populate("product");
     if (cartItem) {
         return cartItem;
     } else {

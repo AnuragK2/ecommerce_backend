@@ -11,7 +11,8 @@ const updateCartItem=async(req,res)=>{
 }
 
 const removeCartItem=async(req,res)=>{
-    const user=await req.user;
+    const user= await req.user;
+    
     try {
         await cartItemService.removeCartItem(user._id,req.params.id);
         return res.status(200).send(message="Cart item removed successfully");

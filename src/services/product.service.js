@@ -84,7 +84,12 @@ async function getAllProducts(reqQuery) {
     pageNumber,
     pageSize,
   } = reqQuery;
-  (pageSize = pageSize || 10), (pageNumber = pageNumber || 1);
+
+  // parse pagination params and set safe defaults
+  pageSize = parseInt(pageSize, 10);
+  pageNumber = parseInt(pageNumber, 10);
+  if (isNaN(pageSize) || pageSize <= 0) pageSize = 10;
+  if (isNaN(pageNumber) || pageNumber < 0) pageNumber = 0;
 
   let query = Product.find().populate("category");
 
@@ -109,10 +114,12 @@ async function getAllProducts(reqQuery) {
     query = query.where("color").regex(colorRegex);
   }
 
-    if (sizes) {
-        const sizeSet = new Set(sizes);
-        query = query.where("sizes.name").in([...sizeSet]);
-    }
+  if (sizes) {
+    // sizes may be a comma-separated string or an array
+    const sizeArr = Array.isArray(sizes) ? sizes : String(sizes).split(",").map(s => s.trim()).filter(Boolean);
+    const sizeSet = new Set(sizeArr);
+    if (sizeSet.size > 0) query = query.where("sizes.name").in([...sizeSet]);
+  }
 
     if(minPrice && maxPrice){
         query=query.where("discountedPrice").gte(minPrice).lte(maxPrice);
@@ -122,21 +129,27 @@ async function getAllProducts(reqQuery) {
         query = query.where("discountPercent").gte(minDiscount);
     }
     
-    if (stock) {
-        if(stock=='in_stock')
-            query = query.where("quantity").gt(0);
-        else if(stock=='out_of_stock')
-            query = query.where("quantity").lte(0);
+  if (stock) {
+    // accept several naming variants from clients (inStock, in_stock, outOfStock, out_of_stock)
+    const s = String(stock).toLowerCase();
+    if (s === 'in_stock' || s === 'instock' || s === 'instock' || s === 'in-stock' || s === 'instock') {
+      query = query.where("quantity").gt(0);
+    } else if (s === 'out_of_stock' || s === 'outofstock' || s === 'outofstock' || s === 'out-stock') {
+      query = query.where("quantity").lte(0);
     }
+  }
 
     if(sort){
         const sortDirection=sort==="price_high" ?-1 : 1;
         query = query.sort({ discountedPrice: sortDirection });
     }
 
-    const totalProducts = await Product.countDocuments(query);
-    const skip = (pageNumber - 1) * pageSize;
-    query = query.skip(skip).limit(pageSize);
+  // countDocuments expects a filter; passing the built query may include chaining
+  const totalProducts = await Product.countDocuments(query.getFilter ? query.getFilter() : query);
+
+  // compute skip ensuring it is not negative. Support 0-based pageNumber from clients.
+  const skip = Math.max(0, (pageNumber - 1) * pageSize);
+  query = query.skip(skip).limit(pageSize);
     const products = await query.exec();
     const totalPages = Math.ceil(totalProducts / pageSize);
 

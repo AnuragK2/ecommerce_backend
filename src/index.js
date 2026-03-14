@@ -2,8 +2,20 @@ const express = require("express")
 const cors = require("cors")
 const app = express()
 
+// disable express ETag generation for API responses to avoid 304 responses
+app.disable('etag');
+
 app.use(express.json())
 app.use(cors())
+
+// Prevent browsers from caching API responses. This avoids returning 304 Not Modified
+// with an empty cached body in some client setups (UI). Apply to all /api routes.
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
 
 app.get("/", (req, res) => {
     return res.status(200).send({message:"welcome to ecommerce api-node",status:true})

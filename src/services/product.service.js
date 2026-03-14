@@ -2,45 +2,59 @@ const Category = require("../models/category.model");
 const Product = require("../models/product.model");
 
 async function createProduct(reqData) {
-  let topLevel = await Category.findOne({ name: reqData.topLevelCategory });
+  // normalize possible client typos and alternate keys
+  const topLevelName = reqData.topLevelCategory || reqData.topLavelCategory || reqData.top_level_category || reqData.topLevel || null;
+  const secondLevelName = reqData.secondLevelCategory || reqData.secondLavelCategory || reqData.second_level_category || reqData.secondLevel || null;
+  const thirdLevelName = reqData.thirdLevelCategory || reqData.thirdLavelCategory || reqData.third_level_category || reqData.thirdLevel || null;
+
+  if (!topLevelName || !secondLevelName || !thirdLevelName) {
+    // ensure we don't try to create categories with undefined names
+    throw new Error('Missing category names. Expecting topLevelCategory, secondLevelCategory and thirdLevelCategory (or their common misspellings).');
+  }
+
+  let topLevel = await Category.findOne({ name: topLevelName });
   if (!topLevel) {
-    topLevel = new Category({ name: reqData.topLevelCategory, level: 1 });
+    topLevel = new Category({ name: topLevelName, level: 1 });
     await topLevel.save();
   }
   let secondLevel = await Category.findOne({
-    name: reqData.secondLevelCategory,
+    name: secondLevelName,
     parentCategory: topLevel._id,
   });
   if (!secondLevel) {
     secondLevel = new Category({
-      name: reqData.secondLevelCategory,
+      name: secondLevelName,
       level: 2,
       parentCategory: topLevel._id,
     });
     await secondLevel.save();
   }
   let thirdLevel = await Category.findOne({
-    name: reqData.thirdLevelCategory,
+    name: thirdLevelName,
     parentCategory: secondLevel._id,
   });
   if (!thirdLevel) {
     thirdLevel = new Category({
-      name: reqData.thirdLevelCategory,
+      name: thirdLevelName,
       level: 3,
       parentCategory: secondLevel._id,
     });
     await thirdLevel.save();
   }
+  // normalize sizes and discount key typos
+  const sizes = reqData.sizes || reqData.size || [];
+  const discountPercent = reqData.discountPercent || reqData.discountPersent || reqData.discount || null;
+
   const product = new Product({
     title: reqData.title,
     color: reqData.color,
     description: reqData.description,
     discountedPrice: reqData.discountedPrice,
-    discountPercent: reqData.discountPercent,
+    discountPercent: discountPercent,
     imageUrl: reqData.imageUrl,
     brand: reqData.brand,
     price: reqData.price,
-    sizes: reqData.sizes,
+    sizes: sizes,
     quantity: reqData.quantity,
     category: thirdLevel._id,
   });
@@ -56,9 +70,9 @@ async function deleteProduct(productId) {
 }
 
 async function updateProduct(productId, updateData) {
-  const product = await Product.findByIdAndUpdate(productId, reqData);
+  const product = await Product.findByIdAndUpdate(productId, updateData, { new: true });
   if (!product) {
-    throw new Error("Product not found with the given id", productId);
+    throw new Error("Product not found with the given id: " + productId);
   }
   return product;
 }
@@ -85,23 +99,27 @@ async function getAllProducts(reqQuery) {
     pageSize,
   } = reqQuery;
 
-  // parse pagination params and set safe defaults
+  // parse pagination params and set safe defaults (1-based pageNumber)
   pageSize = parseInt(pageSize, 10);
   pageNumber = parseInt(pageNumber, 10);
   if (isNaN(pageSize) || pageSize <= 0) pageSize = 10;
-  if (isNaN(pageNumber) || pageNumber < 0) pageNumber = 0;
+  if (isNaN(pageNumber) || pageNumber < 1) pageNumber = 1;
 
   let query = Product.find().populate("category");
 
   if (category) {
-    const existCategory = await Category.findOne({
-      name: category,
-    });
+    // sanitize category value: clients sometimes send quoted strings (e.g. "mens_kurta")
+    let q = String(category).trim();
+    if ((q.startsWith('"') && q.endsWith('"')) || (q.startsWith("'") && q.endsWith("'"))) {
+      q = q.slice(1, -1).trim();
+    }
+
+    const existCategory = await Category.findOne({ name: q });
 
     if (existCategory) {
       query = query.where("category").equals(existCategory._id);
     } else {
-      return { content: [], currentPage: 1, totalPages: 0 };
+    return { content: [], currentPage: pageNumber, totalPages: 0 };
     }
   }
 

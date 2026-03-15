@@ -6,7 +6,10 @@ const app = express()
 app.disable('etag');
 
 app.use(express.json())
-app.use(cors({origin:"*"}))
+app.use(cors({
+    origin: "https://shopshavy.netlify.app",
+    credentials: true
+}))
 
 // Prevent browsers from caching API responses. This avoids returning 304 Not Modified
 // with an empty cached body in some client setups (UI). Apply to all /api routes.

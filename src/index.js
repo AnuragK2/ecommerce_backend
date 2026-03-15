@@ -7,7 +7,7 @@ app.disable('etag');
 
 app.use(express.json())
 app.use(cors({
-    origin: "https://shopshavy.netlify.app",
+    origin: ["https://shopshavy.netlify.app", "http://localhost:3000"],
     credentials: true
 }))
 
@@ -53,5 +53,8 @@ app.use("/api/reviews", reviewRouter);
 
 const ratingRouter=require("./routes/rating.route.js")
 app.use("/api/ratings", ratingRouter);
+
+const paymentRouter=require("./routes/payment.route.js")
+app.use("/api/payments", paymentRouter);
 
 module.exports = app;
